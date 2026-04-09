@@ -1,0 +1,13 @@
+{
+  "name": "HarnessEngineeringSkills",
+  "description": "Skills for bootstrapping agent-first development repos with harness scripts, CI, and documentation.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Swifty",
+    "url": "https://github.com/Swiftyos"
+  },
+  "homepage": "https://github.com/Swiftyos/HarnessEngineeringSkills",
+  "repository": "https://github.com/Swiftyos/HarnessEngineeringSkills",
+  "license": "MIT",
+  "keywords": ["bootstrap", "agent-first", "harness", "ci", "documentation", "scaffolding", "claude-code"]
+}

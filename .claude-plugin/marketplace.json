@@ -1,0 +1,16 @@
+{
+  "name": "HarnessEngineeringSkills",
+  "owner": {
+    "name": "Swifty"
+  },
+  "metadata": {
+    "description": "Skills for bootstrapping agent-first development repos with harness scripts, CI, and documentation"
+  },
+  "plugins": [
+    {
+      "name": "bootstrap",
+      "source": "./",
+      "description": "Bootstrap a new project repository for agent-first development with docs, scripts, CI, and tests"
+    }
+  ]
+}
