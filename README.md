@@ -16,12 +16,12 @@ Harness engineering emerged from OpenAI's Frontier team, where three engineers b
 
 | Skill | Description |
 |-------|-------------|
-| [`bootstrap`](skills/bootstrap/) | Scaffold a new repo for agent-first development — docs, harness scripts, CI, smoke tests, and automerge workflows |
+| [`setup-harness`](skills/setup-harness/) | Scaffold a new repo for agent-first development — docs, harness scripts, CI, smoke tests, and automerge workflows |
 
 ### Install
 
 ```bash
-npx skills add Swiftyos/HarnessEngineeringSkills@bootstrap
+npx skills add Swiftyos/HarnessEngineeringSkills@setup-harness
 ```
 
 ## Principles

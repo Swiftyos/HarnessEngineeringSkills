@@ -1,5 +1,5 @@
 ---
-name: bootstrap
+name: setup-harness
 description: >
   Bootstrap a new project repository for agent-first development.
   Use this skill whenever the user wants to set up a new repo, scaffold a project,

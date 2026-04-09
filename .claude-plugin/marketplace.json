@@ -8,9 +8,9 @@
   },
   "plugins": [
     {
-      "name": "bootstrap",
+      "name": "setup-harness",
       "source": "./",
-      "description": "Bootstrap a new project repository for agent-first development with docs, scripts, CI, and tests"
+      "description": "Scaffold a new repo for agent-first development with docs, harness scripts, CI, and automerge workflows"
     }
   ]
 }
