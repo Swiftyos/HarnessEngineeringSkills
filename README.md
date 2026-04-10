@@ -32,7 +32,7 @@ These skills encode a few hard-won ideas:
 
 2. **One-minute build loops.** Fast feedback keeps agents productive. When builds get slow, refactor the architecture rather than relaxing the constraint.
 
-3. **Docs fail CI.** Generated docs have freshness checks. Links are validated. Drift between AGENTS.md and actual repo structure is caught automatically.
+3. **Docs fail CI.** Generated docs have freshness checks. Links are validated. Every committed directory carries an `INDEX.md` contract that must stay current.
 
 4. **Start conservative on automerge.** Green CI + agent review + human merge. Widen only after the repo proves stable.
 
