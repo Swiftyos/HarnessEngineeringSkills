@@ -20,3 +20,4 @@ packaging its instructions, references, and helper scripts together.
 ## Subdirectories
 
 - [setup-harness/INDEX.md](setup-harness/INDEX.md) - Bootstrap skill for agent-first repo setup.
+- [update-harness/INDEX.md](update-harness/INDEX.md) - Upgrade skill for existing agent harnesses.

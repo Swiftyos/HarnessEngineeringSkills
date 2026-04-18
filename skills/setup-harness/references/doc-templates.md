@@ -1,8 +1,13 @@
 # Document Templates
 
-Customize every template below using the project details gathered in Phase 1.
-Replace all `{{placeholders}}` with real values. Never leave TODO placeholders
-in the final output.
+Customize every template below using the project details gathered during
+orientation. Replace all `{{placeholders}}` with real values. Never leave TODO
+placeholders in the final output.
+
+These templates are examples, not mandatory stack choices. Omit sections that do
+not fit the target repo, rename files to match established local conventions,
+and prefer the repo's existing language, test runner, package manager, and CI
+provider.
 
 ---
 
@@ -15,12 +20,12 @@ Target: 100–140 lines. This is the entry point for any agent working in the re
 
 {{one-line description}}
 
-## Stack
+## Project surfaces
 
-- Frontend: {{frontend stack or "N/A"}}
-- Backend: {{backend stack}}
-- Database: {{database}}
-- Package manager: {{package manager}}
+- Primary runtime: {{language/framework/toolchain}}
+- Interfaces: {{CLI, service, frontend, library, worker, mobile app, etc.}}
+- Storage or external services: {{database/queue/provider or "N/A"}}
+- Package/build tooling: {{package manager, build tool, task runner}}
 
 ## Repo map
 
@@ -29,7 +34,7 @@ Target: 100–140 lines. This is the entry point for any agent working in the re
 ├── {{relevant top-level dirs with one-line descriptions}}
 ├── docs/           # Deep docs — start with docs/README.md
 ├── scripts/        # All standard commands live here
-├── e2e/            # Playwright smoke and baseline tests
+├── e2e/            # Smoke or end-to-end tests, if applicable
 └── .github/        # Workflows and PR template
 ```
 
@@ -38,7 +43,7 @@ Target: 100–140 lines. This is the entry point for any agent working in the re
 | What                    | Where                          |
 |-------------------------|--------------------------------|
 | Architecture            | `docs/ARCHITECTURE.md`         |
-| Agent operating contract| `docs/HARNESS.md`              |
+| Harness strategy        | `docs/HARNESS_ENGINEERING.md`  |
 | Repo health             | `docs/QUALITY_SCORE.md`        |
 | Product behavior spec   | `docs/behaviours/platform.md`  |
 | Execution plans         | `docs/exec-plans/`             |
@@ -52,8 +57,11 @@ Target: 100–140 lines. This is the entry point for any agent working in the re
 # Fast feedback loop (run before every PR)
 ./scripts/fast-feedback.sh
 
-# UI smoke tests (for frontend changes)
-./scripts/ui-smoke.sh
+# Smoke or e2e checks when relevant
+./scripts/e2e.sh
+
+# Full CI-equivalent harness gate
+./scripts/harness-check.sh
 
 # Start local dev stack
 ./scripts/harness/run-local.sh
@@ -64,16 +72,19 @@ Target: 100–140 lines. This is the entry point for any agent working in the re
 1. Run `./scripts/fast-feedback.sh` before opening a PR. If it fails, fix it.
 2. Do not edit generated files in `docs/generated/` by hand — run the generator.
 3. Keep this file under 140 lines. Put detail in `docs/`.
-4. When behavior changes, update `docs/behaviours/platform.md` first.
+4. When behavior changes, update the canonical behavior docs first.
 5. Every PR must follow the PR template.
 ```
 
 ---
 
-## Generic INDEX.md
+## Optional directory INDEX.md
 
-Create one of these in every committed directory. Keep the top two sections
-hand-authored, and let the generated inventory sections be refreshed by script.
+Use this only when the target repo chooses per-directory contracts. Some mature
+harnesses instead use a concise router plus a generated workspace inventory,
+which is often lighter for larger repos. Keep the top two sections
+hand-authored, and let generated inventory sections be refreshed by script when
+the repo uses this convention.
 
 ```markdown
 # {{DIRECTORY_NAME}} Index
@@ -99,12 +110,12 @@ hand-authored, and let the generated inventory sections be refreshed by script.
 - [{{SUBDIR_B}}/INDEX.md]({{SUBDIR_B}}/INDEX.md) — {{What lives there}}
 ```
 
-Rules:
-- Every non-generated directory tracked in git must have an `INDEX.md`.
-- `INDEX.md` must link to every file in the same directory except itself.
-- `INDEX.md` must link to each child directory's `INDEX.md`.
-- The "Purpose" and "File conventions" sections explain what files belong there
-  and what format they should follow.
+Rules when a repo adopts directory indexes:
+- each non-generated tracked directory should have an `INDEX.md`
+- `INDEX.md` should link to every file in the same directory except itself
+- `INDEX.md` should link to each child directory's `INDEX.md`
+- the "Purpose" and "File conventions" sections explain what files belong
+  there and what format they should follow
 
 ---
 
@@ -115,7 +126,7 @@ Rules:
 
 ## Architecture and design
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Module boundaries and dependency direction
-- [HARNESS.md](HARNESS.md) — Agent operating contract and merge policy
+- [HARNESS_ENGINEERING.md](HARNESS_ENGINEERING.md) — Agent harness strategy and merge policy
 
 ## Health
 - [QUALITY_SCORE.md](QUALITY_SCORE.md) — Repo health summary and incident log
@@ -178,7 +189,7 @@ Use a simple dependency diagram if helpful:}}
 
 ---
 
-## docs/HARNESS.md
+## docs/HARNESS_ENGINEERING.md or docs/HARNESS.md
 
 ```markdown
 # Agent Harness Contract
@@ -188,9 +199,10 @@ Use a simple dependency diagram if helpful:}}
 | When                          | Command                          |
 |-------------------------------|----------------------------------|
 | Before every PR               | `./scripts/fast-feedback.sh`     |
-| After UI changes              | `./scripts/ui-smoke.sh`          |
-| To validate repo structure    | `./scripts/validate-repo.sh`     |
-| To start local stack          | `./scripts/harness/run-local.sh` |
+| CI-equivalent local gate       | `./scripts/harness-check.sh`     |
+| To validate repo structure    | `./scripts/validate-harness-docs.sh` |
+| To run smoke/e2e checks       | `./scripts/e2e.sh`               |
+| To start local dependencies   | `./scripts/harness/run-local.sh` |
 
 ## PR requirements
 
@@ -198,8 +210,8 @@ Every PR must:
 - [ ] Pass `fast-feedback.sh`
 - [ ] Include a filled-out PR template
 - [ ] Update `docs/behaviours/platform.md` if behavior changed
-- [ ] Include screenshots/video for user-facing changes
-- [ ] Run `ui-smoke.sh` if touching frontend code
+- [ ] Include screenshots, logs, traces, or artifacts when user-facing or environment-facing behavior changed
+- [ ] Run the relevant smoke/e2e command when touching tested behavior
 
 ## Automerge eligibility
 
@@ -223,12 +235,12 @@ These paths never automerge:
 - `**/.env*`, `**/credentials*`, `**/secrets*`
 - `.github/**`
 - `AGENTS.md`
-- `docs/HARNESS.md`
+- `docs/HARNESS_ENGINEERING.md`, `docs/HARNESS.md`
 
 ## Failure escalation
 
 1. If `fast-feedback.sh` fails: fix before merging. No exceptions.
-2. If `ui-smoke.sh` fails: investigate. Do not skip.
+2. If smoke/e2e checks fail: investigate. Do not skip without recording why.
 3. If nightly baseline breaks: an auto-PR is opened. Fix forward.
 4. If generated docs are stale: refresh and commit.
 ```
@@ -387,8 +399,8 @@ Each plan should include:
 
 ## Suggested directory contracts
 
-Use these expectations when writing the hand-authored sections of each
-directory's `INDEX.md`:
+Use these expectations only when the repo adopts per-directory `INDEX.md`
+contracts:
 
 - Repo root: explain top-level entrypoints, which files are policy docs versus
   project docs, and point to each major directory's `INDEX.md`.
@@ -399,7 +411,7 @@ directory's `INDEX.md`:
 - `docs/exec-plans/`: explain plan-doc structure and that child directories
   split active work from completed work.
 - `docs/exec-plans/active/`: explain naming by workstream/date and required
-  sections: Goal, Steps, Dependencies, Validation.
+  sections: Goal, Scope, Tasks, Decision Log, Verification.
 - `docs/exec-plans/completed/`: explain that completed plans retain the same
   structure plus outcome/shipping notes.
 - `docs/generated/`: explain files are script-generated and not edited by hand.

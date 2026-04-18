@@ -4,13 +4,18 @@
     "name": "Swifty"
   },
   "metadata": {
-    "description": "Skills for bootstrapping agent-first development repos with harness scripts, CI, and documentation"
+    "description": "Skills for bootstrapping and upgrading agent-first development repos with harness scripts, CI, and documentation"
   },
   "plugins": [
     {
       "name": "setup-harness",
       "source": "./",
       "description": "Scaffold a new repo for agent-first development with docs, harness scripts, CI, and automerge workflows"
+    },
+    {
+      "name": "update-harness",
+      "source": "./",
+      "description": "Audit and improve an existing agent harness without replacing local conventions"
     }
   ]
 }

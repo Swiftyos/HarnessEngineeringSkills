@@ -1,8 +1,14 @@
 # Test Templates
 
+Use these only when the target repo has a browser frontend and no stronger
+local smoke-test convention already exists. For CLIs, APIs, libraries, workers,
+mobile apps, or infrastructure repos, create the equivalent smoke test in the
+repo's native test framework and keep the same properties: small, tagged or
+filterable, behavior-focused, and artifact-producing on failure.
+
 ---
 
-## playwright.config.ts
+## Browser example: playwright.config.ts
 
 ```typescript
 import { defineConfig, devices } from '@playwright/test';
@@ -31,7 +37,7 @@ export default defineConfig({
 
 ---
 
-## e2e/smoke.behavior.spec.ts
+## Browser example: e2e/smoke.behavior.spec.ts
 
 Adapt the selectors and URLs to the actual project. The important things are:
 - Tag with `@smoke` so the suite can be filtered
@@ -77,7 +83,7 @@ test.describe('@smoke Core smoke tests', () => {
 
 ---
 
-## Notes on test setup
+## Browser example notes
 
 - Install Playwright as a dev dependency: `npm install -D @playwright/test`
 - Install browsers: `npx playwright install chromium`

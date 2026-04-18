@@ -1,8 +1,12 @@
 # Script Templates
 
 Adapt each script to the project's actual stack. Replace `{{placeholders}}`
-with real values. All shell scripts should use `#!/usr/bin/env bash` and
-`set -euo pipefail`.
+with real values. The examples below use Bash plus small JavaScript utilities
+because that is a portable pattern for many repos, but it is not required. If
+the target repo standardizes on Python, Go, Rust, Ruby, Make, Just, or another
+tool, translate the checks into that runtime.
+
+All shell scripts should use `#!/usr/bin/env bash` and `set -euo pipefail`.
 
 ---
 
@@ -30,19 +34,19 @@ fi
 
 # 2. Check markdown links
 echo "Checking doc links..."
-node "$SCRIPT_DIR/check-doc-links.mjs" || ERRORS=$((ERRORS + 1))
+{{script_runtime}} "$SCRIPT_DIR/check-doc-links.{{ext}}" || ERRORS=$((ERRORS + 1))
 
-# 3. Check directory indexes
-echo "Checking directory indexes..."
-node "$SCRIPT_DIR/check-index-docs.mjs" || ERRORS=$((ERRORS + 1))
+# 3. Check directory indexes if the repo uses per-directory INDEX.md files
+# echo "Checking directory indexes..."
+# {{script_runtime}} "$SCRIPT_DIR/check-index-docs.{{ext}}" || ERRORS=$((ERRORS + 1))
 
 # 4. Check AGENTS.md drift
 echo "Checking AGENTS.md drift..."
-node "$SCRIPT_DIR/check-agents-drift.mjs" || ERRORS=$((ERRORS + 1))
+{{script_runtime}} "$SCRIPT_DIR/check-agents-drift.{{ext}}" || ERRORS=$((ERRORS + 1))
 
 # 5. Check behaviour doc consistency
 echo "Checking behaviour docs..."
-node "$SCRIPT_DIR/check-behaviour-docs.mjs" || ERRORS=$((ERRORS + 1))
+{{script_runtime}} "$SCRIPT_DIR/check-behaviour-docs.{{ext}}" || ERRORS=$((ERRORS + 1))
 
 # 6. Check generated docs freshness
 echo "Checking generated docs..."
@@ -98,9 +102,11 @@ echo "Fast feedback passed."
 
 ---
 
-## scripts/ui-smoke.sh
+## scripts/ui-smoke.sh or scripts/e2e.sh
 
-Only create if the project has a browser frontend.
+Only create a browser smoke script if the project has a browser frontend. For a
+CLI, API, library, mobile app, or worker, create an equivalent smoke/e2e script
+using the repo's native test runner.
 
 ```bash
 #!/usr/bin/env bash
@@ -112,17 +118,15 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-$REPO_ROOT/test-results}"
 mkdir -p "$ARTIFACTS_DIR"
 
-echo "=== UI Smoke Tests ==="
+echo "=== Smoke Tests ==="
 
 cd "$REPO_ROOT"
 
-npx playwright test --grep @smoke \
-  --reporter=html \
-  --output="$ARTIFACTS_DIR" \
-  || {
-    echo "Smoke tests failed. Artifacts saved to $ARTIFACTS_DIR"
-    exit 1
-  }
+export ARTIFACTS_DIR
+{{smoke_command}} || {
+  echo "Smoke tests failed. Artifacts saved to $ARTIFACTS_DIR"
+  exit 1
+}
 
 echo "Smoke tests passed. Artifacts: $ARTIFACTS_DIR"
 ```
@@ -481,7 +485,9 @@ const checks = [
   check('Smoke tests', existsSync(join(REPO_ROOT, 'e2e'))),
   check('Behaviour spec', existsSync(join(REPO_ROOT, 'docs', 'behaviours', 'platform.md'))),
   check('AGENTS.md', existsSync(join(REPO_ROOT, 'AGENTS.md'))),
-  check('Harness doc', existsSync(join(REPO_ROOT, 'docs', 'HARNESS.md'))),
+  check('Harness doc',
+    existsSync(join(REPO_ROOT, 'docs', 'HARNESS_ENGINEERING.md')) ||
+    existsSync(join(REPO_ROOT, 'docs', 'HARNESS.md'))),
 ];
 
 const date = new Date().toISOString().split('T')[0];

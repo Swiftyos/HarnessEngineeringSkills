@@ -1,6 +1,10 @@
 # Workflow and PR Templates
 
-Replace `{{placeholders}}` with project-specific values.
+Replace `{{placeholders}}` with project-specific values. These examples use
+GitHub Actions because that is common for public repos; translate the same
+contract to Buildkite, GitLab, CircleCI, Jenkins, or another CI provider when
+the target repo already uses one. Replace Node/Playwright setup with the repo's
+actual toolchain setup.
 
 ---
 
@@ -18,12 +22,12 @@ _What user-visible behavior changed? If none, write "No behavior changes."_
 ## Validation
 
 - [ ] `./scripts/fast-feedback.sh` passed
-- [ ] `./scripts/ui-smoke.sh` passed (if UI changed)
+- [ ] Relevant smoke/e2e command passed (if behavior changed)
 - [ ] Behavior docs updated (if behavior changed)
 
 ## Screenshots / video
 
-_Attach for user-facing changes. Write "N/A" for backend-only changes._
+_Attach screenshots, logs, traces, or artifacts for user-facing or environment-facing changes. Write "N/A" when not relevant._
 ```
 
 ---
@@ -46,12 +50,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: '{{package_manager}}'
-
-      # Add other setup steps as needed (e.g., Go, Python, etc.)
+      # Add the target repo's toolchain setup here.
+      # Examples: actions/setup-node, actions/setup-python, actions/setup-go,
+      # dtolnay/rust-toolchain, ruby/setup-ruby, docker/setup-buildx-action.
 
       - name: Install dependencies
         run: {{install_command}}
@@ -62,20 +63,21 @@ jobs:
 
 ---
 
-## .github/workflows/pr-ui-smoke.yml
+## .github/workflows/pr-smoke.yml
 
-Only include if the project has a browser frontend.
+Only include if the project has a dedicated smoke/e2e suite that should run on
+selected PR paths.
 
 ```yaml
-name: PR UI Smoke
+name: PR Smoke
 
 on:
   pull_request:
     branches: [main, master]
     paths:
-      - '{{frontend_dir}}/**'
+      - '{{behavior_relevant_path}}/**'
       - 'e2e/**'
-      - 'playwright.config.*'
+      - '{{smoke_config_glob}}'
 
 permissions:
   contents: read
@@ -86,19 +88,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: '{{package_manager}}'
+      # Add the target repo's toolchain setup here.
 
       - name: Install dependencies
         run: {{install_command}}
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      # Add browser/emulator/service setup only if the smoke suite needs it.
 
       - name: Run smoke tests
-        run: ./scripts/ui-smoke.sh
+        run: {{smoke_command}}
         env:
           ARTIFACTS_DIR: ${{ github.workspace }}/test-results
 
@@ -133,21 +131,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: '{{package_manager}}'
+      # Add the target repo's toolchain setup here.
 
       - name: Install dependencies
         run: {{install_command}}
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+      # Add browser/emulator/service setup only if the baseline suite needs it.
 
       - name: Run full test suite
         id: tests
         continue-on-error: true
-        run: npx playwright test --reporter=html
+        run: {{baseline_command}}
         env:
           ARTIFACTS_DIR: ${{ github.workspace }}/test-results
 
@@ -193,18 +187,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: '{{package_manager}}'
+      # Add the target repo's toolchain setup here.
 
       - name: Install dependencies
         run: {{install_command}}
 
       - name: Refresh generated docs
         run: |
-          node scripts/generate-workspace-docs.mjs
-          node scripts/refresh-quality-score.mjs
+          {{generate_workspace_docs_command}}
+          {{refresh_quality_score_command}}
 
       - name: Check for changes
         id: changes
@@ -276,6 +267,7 @@ jobs:
           #   "**/secrets*"
           #   ".github/**"
           #   "AGENTS.md"
+          #   "docs/HARNESS_ENGINEERING.md"
           #   "docs/HARNESS.md"
           # )
 
@@ -309,6 +301,7 @@ Create `.github/automerge-paths.json` to configure eligible paths:
     "**/secrets*",
     ".github/**",
     "AGENTS.md",
+    "docs/HARNESS_ENGINEERING.md",
     "docs/HARNESS.md"
   ],
   "notes": "Stage 1: no automerge. Graduate to Stage 2 after repo is stable."

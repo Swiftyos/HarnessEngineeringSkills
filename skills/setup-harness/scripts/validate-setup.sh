@@ -3,209 +3,219 @@ set -euo pipefail
 
 # validate-setup.sh
 #
-# Checks that all expected files from an agent-first bootstrap exist.
-# Run after bootstrapping to verify completeness, or at any time to
-# check if the repo structure has drifted.
+# Checks that a newly scaffolded agent harness has the common language-agnostic
+# surfaces in place. Copy into a target repo after adapting the expected file
+# list to that repo's conventions.
 #
 # Usage:
-#   ./scripts/validate-setup.sh [--has-frontend] [--has-harness]
+#   ./scripts/validate-setup.sh [--has-smoke] [--has-local-harness]
+#                               [--uses-indexes] [--github-actions]
+#                               [--has-review-skills]
 #
-# Flags:
-#   --has-frontend   Expect UI smoke script, Playwright config, smoke tests,
-#                    and pr-ui-smoke workflow
-#   --has-harness    Expect scripts/harness/run-local.sh
+# Backward-compatible aliases:
+#   --has-frontend  same as --has-smoke
+#   --has-harness   same as --has-local-harness
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
-HAS_FRONTEND=false
-HAS_HARNESS=false
+HAS_SMOKE=false
+HAS_LOCAL_HARNESS=false
+USES_INDEXES=false
+GITHUB_ACTIONS=false
+HAS_REVIEW_SKILLS=false
 
 for arg in "$@"; do
   case "$arg" in
-    --has-frontend) HAS_FRONTEND=true ;;
-    --has-harness)  HAS_HARNESS=true ;;
+    --has-smoke|--has-frontend) HAS_SMOKE=true ;;
+    --has-local-harness|--has-harness) HAS_LOCAL_HARNESS=true ;;
+    --uses-indexes) USES_INDEXES=true ;;
+    --github-actions) GITHUB_ACTIONS=true ;;
+    --has-review-skills) HAS_REVIEW_SKILLS=true ;;
+    *)
+      echo "unknown argument: $arg" >&2
+      exit 2
+      ;;
   esac
 done
-
-# --- colour helpers (no-op if not a terminal) ---
-if [ -t 1 ]; then
-  GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[0;33m'; NC='\033[0m'
-else
-  GREEN=''; RED=''; YELLOW=''; NC=''
-fi
 
 PASS=0
 FAIL=0
 WARN=0
 
-pass()  { PASS=$((PASS + 1)); echo -e "  ${GREEN}✓${NC} $1"; }
-fail()  { FAIL=$((FAIL + 1)); echo -e "  ${RED}✗${NC} $1"; }
-warn()  { WARN=$((WARN + 1)); echo -e "  ${YELLOW}?${NC} $1 (optional)"; }
+pass() { PASS=$((PASS + 1)); echo "  OK   $1"; }
+fail() { FAIL=$((FAIL + 1)); echo "  FAIL $1"; }
+warn() { WARN=$((WARN + 1)); echo "  WARN $1"; }
 
 check_file() {
   local path="$1"
   local label="${2:-$1}"
-  if [ -f "$REPO_ROOT/$path" ]; then
+  if [[ -f "$REPO_ROOT/$path" ]]; then
     pass "$label"
   else
-    fail "$label  →  missing $path"
+    fail "$label missing: $path"
   fi
 }
 
 check_dir() {
   local path="$1"
   local label="${2:-$1}"
-  if [ -d "$REPO_ROOT/$path" ]; then
+  if [[ -d "$REPO_ROOT/$path" ]]; then
     pass "$label"
   else
-    fail "$label  →  missing $path"
+    fail "$label missing: $path"
   fi
 }
 
 check_executable() {
   local path="$1"
   local label="${2:-$1}"
-  if [ -f "$REPO_ROOT/$path" ]; then
-    if [ -x "$REPO_ROOT/$path" ]; then
-      pass "$label"
-    else
-      fail "$label  →  exists but not executable"
-    fi
+  if [[ -x "$REPO_ROOT/$path" && -f "$REPO_ROOT/$path" ]]; then
+    pass "$label"
+  elif [[ -f "$REPO_ROOT/$path" ]]; then
+    fail "$label exists but is not executable: $path"
   else
-    fail "$label  →  missing $path"
+    fail "$label missing: $path"
   fi
 }
 
-check_optional() {
+check_optional_file() {
   local path="$1"
   local label="${2:-$1}"
-  if [ -f "$REPO_ROOT/$path" ]; then
+  if [[ -f "$REPO_ROOT/$path" ]]; then
     pass "$label"
   else
-    warn "$label  →  $path"
+    warn "$label optional missing: $path"
   fi
 }
 
-# ============================================================
-echo ""
-echo "=== Bootstrap Setup Validation ==="
+check_any_file() {
+  local label="$1"
+  shift
+  local path
+  for path in "$@"; do
+    if [[ -f "$REPO_ROOT/$path" ]]; then
+      pass "$label ($path)"
+      return 0
+    fi
+  done
+  fail "$label missing one of: $*"
+}
+
+check_any_executable() {
+  local label="$1"
+  shift
+  local path
+  for path in "$@"; do
+    if [[ -x "$REPO_ROOT/$path" && -f "$REPO_ROOT/$path" ]]; then
+      pass "$label ($path)"
+      return 0
+    fi
+  done
+  fail "$label missing executable one of: $*"
+}
+
+check_glob() {
+  local label="$1"
+  local pattern="$2"
+  local matches=()
+  while IFS= read -r match; do
+    matches+=("$match")
+  done < <(cd "$REPO_ROOT" && compgen -G "$pattern" || true)
+  if [[ "${#matches[@]}" -gt 0 ]]; then
+    pass "$label (${matches[0]})"
+  else
+    fail "$label missing glob: $pattern"
+  fi
+}
+
+echo
+echo "=== Agent Harness Setup Validation ==="
 echo "Repo: $REPO_ROOT"
-echo ""
+echo
 
-# --- Core documents ---
-echo "── Core documents ──"
-check_file "AGENTS.md"            "AGENTS.md (router)"
-check_file "INDEX.md"             "INDEX.md (root directory contract)"
-check_file "README.md"            "README.md"
-echo ""
+echo "-- Core entrypoints --"
+check_file "AGENTS.md" "AGENTS.md router"
+check_optional_file "README.md" "README.md"
+if $USES_INDEXES; then
+  check_file "INDEX.md" "root INDEX.md"
+fi
+echo
 
-# --- Docs structure ---
-echo "── Docs ──"
-check_file "docs/INDEX.md"              "docs/INDEX.md (directory contract)"
-check_file "docs/README.md"             "docs/README.md (index)"
-check_file "docs/ARCHITECTURE.md"       "docs/ARCHITECTURE.md"
-check_file "docs/HARNESS.md"            "docs/HARNESS.md (agent contract)"
-check_file "docs/QUALITY_SCORE.md"      "docs/QUALITY_SCORE.md"
-echo ""
+echo "-- Source-of-truth docs --"
+check_file "docs/README.md" "docs map"
+check_file "docs/ARCHITECTURE.md" "architecture doc"
+check_any_file "harness strategy doc" "docs/HARNESS_ENGINEERING.md" "docs/HARNESS.md"
+check_file "docs/PLANS.md" "execution-plan workflow"
+check_file "docs/QUALITY_SCORE.md" "quality baseline"
+check_optional_file "docs/SECURITY.md" "security doc"
+check_optional_file "docs/RELIABILITY.md" "reliability doc"
+echo
 
-# --- Behaviour docs ---
-echo "── Behaviour docs ──"
-check_file "docs/behaviours/INDEX.md"         "docs/behaviours/INDEX.md"
-check_file "docs/behaviours/README.md"        "docs/behaviours/README.md"
-check_file "docs/behaviours/platform.md"      "docs/behaviours/platform.md (spec)"
-check_file "docs/behaviours/current-state.md" "docs/behaviours/current-state.md"
-check_file "docs/behaviours/e2e-checklist.md" "docs/behaviours/e2e-checklist.md"
-echo ""
+echo "-- Behaviour docs --"
+check_file "docs/behaviours/README.md" "behaviour docs map"
+check_file "docs/behaviours/platform.md" "canonical scenarios"
+check_file "docs/behaviours/current-state.md" "current validation state"
+check_file "docs/behaviours/e2e-checklist.md" "e2e checklist"
+echo
 
-# --- Exec plans ---
-echo "── Exec plans ──"
-check_file "docs/exec-plans/INDEX.md"    "docs/exec-plans/INDEX.md"
-check_file "docs/exec-plans/README.md"   "docs/exec-plans/README.md"
-check_file "docs/exec-plans/active/INDEX.md"    "docs/exec-plans/active/INDEX.md"
-check_dir  "docs/exec-plans/active"      "docs/exec-plans/active/"
-check_file "docs/exec-plans/completed/INDEX.md" "docs/exec-plans/completed/INDEX.md"
-check_dir  "docs/exec-plans/completed"   "docs/exec-plans/completed/"
-echo ""
+echo "-- Execution plans and generated docs --"
+check_dir "docs/exec-plans/active" "active execution plans"
+check_dir "docs/exec-plans/completed" "completed execution plans"
+check_dir "docs/generated" "generated docs directory"
+check_optional_file "docs/generated/README.md" "generated docs map"
+echo
 
-# --- Generated / playbooks dirs ---
-echo "── Generated & playbooks ──"
-check_file "docs/generated/INDEX.md" "docs/generated/INDEX.md"
-check_dir "docs/generated"   "docs/generated/"
-check_file "docs/playbooks/INDEX.md" "docs/playbooks/INDEX.md"
-check_dir "docs/playbooks"   "docs/playbooks/"
-echo ""
+echo "-- Script entrypoints --"
+check_file "scripts/README.md" "script catalog"
+check_executable "scripts/fast-feedback.sh" "fast local gate"
+check_executable "scripts/harness-check.sh" "full harness gate"
+check_any_executable "harness docs validator" "scripts/validate-harness-docs.sh" "scripts/validate-repo.sh"
+check_glob "doc link check" "scripts/check-doc-links.*"
+check_glob "AGENTS drift check" "scripts/check-agents-drift.*"
+check_glob "behaviour docs check" "scripts/check-behaviour-docs.*"
+check_glob "generated docs check" "scripts/check-generated-docs.*"
+check_glob "workspace docs generator" "scripts/generate-workspace-docs.*"
+check_glob "quality score generator" "scripts/refresh-quality-score.*"
+echo
 
-# --- Scripts (always expected) ---
-echo "── Scripts (core) ──"
-check_executable "scripts/validate-repo.sh"          "validate-repo.sh"
-check_executable "scripts/fast-feedback.sh"          "fast-feedback.sh"
-check_file       "scripts/generate-workspace-docs.mjs" "generate-workspace-docs.mjs"
-check_file       "scripts/generate-index-docs.mjs"     "generate-index-docs.mjs"
-check_file       "scripts/check-index-docs.mjs"        "check-index-docs.mjs"
-check_file       "scripts/refresh-quality-score.mjs"    "refresh-quality-score.mjs"
-check_file       "scripts/check-doc-links.mjs"          "check-doc-links.mjs"
-check_file       "scripts/check-agents-drift.mjs"       "check-agents-drift.mjs"
-check_file       "scripts/check-behaviour-docs.mjs"     "check-behaviour-docs.mjs"
-check_executable "scripts/check-generated-docs.sh"      "check-generated-docs.sh"
-echo ""
-
-# --- Scripts (conditional) ---
-echo "── Scripts (conditional) ──"
-if $HAS_FRONTEND; then
-  check_executable "scripts/ui-smoke.sh" "ui-smoke.sh (frontend)"
+echo "-- Conditional surfaces --"
+if $HAS_SMOKE; then
+  check_any_executable "smoke/e2e runner" "scripts/e2e.sh" "scripts/e2e-agent.sh" "scripts/ui-smoke.sh" "scripts/smoke.sh"
 else
-  check_optional   "scripts/ui-smoke.sh" "ui-smoke.sh (frontend)"
+  check_optional_file "scripts/e2e.sh" "smoke/e2e runner"
 fi
 
-if $HAS_HARNESS; then
-  check_executable "scripts/harness/run-local.sh" "harness/run-local.sh"
+if $HAS_LOCAL_HARNESS; then
+  check_executable "scripts/harness/run-local.sh" "local dependency harness"
 else
-  check_optional   "scripts/harness/run-local.sh" "harness/run-local.sh"
+  check_optional_file "scripts/harness/run-local.sh" "local dependency harness"
 fi
-echo ""
 
-# --- Tests ---
-echo "── Tests ──"
-if $HAS_FRONTEND; then
-  check_file "playwright.config.ts"          "playwright.config.ts"
-  check_file "e2e/smoke.behavior.spec.ts"    "e2e/smoke.behavior.spec.ts"
+if $HAS_REVIEW_SKILLS; then
+  check_file ".agents/skills/review/SKILL.md" "repo-local review skill"
+  check_file ".agents/skills/security-review/SKILL.md" "repo-local security review skill"
 else
-  check_optional "playwright.config.ts"       "playwright.config.ts"
-  check_optional "e2e/smoke.behavior.spec.ts" "e2e/smoke.behavior.spec.ts"
+  check_optional_file ".agents/skills/review/SKILL.md" "repo-local review skill"
+  check_optional_file ".agents/skills/security-review/SKILL.md" "repo-local security review skill"
 fi
-echo ""
+echo
 
-# --- GitHub CI ---
-echo "── GitHub workflows ──"
-check_file ".github/pull_request_template.md"             "PR template"
-check_file ".github/workflows/pr-fast.yml"                "pr-fast.yml"
-check_file ".github/workflows/nightly-baseline.yml"       "nightly-baseline.yml"
-check_file ".github/workflows/weekly-doc-gardening.yml"   "weekly-doc-gardening.yml"
-check_file ".github/workflows/automerge.yml"              "automerge.yml"
-
-if $HAS_FRONTEND; then
-  check_file ".github/workflows/pr-ui-smoke.yml"          "pr-ui-smoke.yml (frontend)"
-else
-  check_optional ".github/workflows/pr-ui-smoke.yml"      "pr-ui-smoke.yml (frontend)"
+if $GITHUB_ACTIONS; then
+  echo "-- GitHub workflows --"
+  check_optional_file ".github/pull_request_template.md" "PR template"
+  check_any_file "harness workflow" ".github/workflows/harness.yml" ".github/workflows/pr-fast.yml"
+  check_optional_file ".github/workflows/weekly-doc-gardening.yml" "scheduled generated-doc refresh"
+  check_optional_file ".github/workflows/automerge.yml" "automerge policy workflow"
+  echo
 fi
-echo ""
 
-# --- Automerge config ---
-echo "── Automerge config ──"
-check_optional ".github/automerge-paths.json" "automerge-paths.json"
-echo ""
+echo "----------------------------------------"
+echo "Passed: $PASS    Failed: $FAIL    Optional missing: $WARN"
+echo "----------------------------------------"
 
-# ============================================================
-echo "──────────────────────────────"
-echo -e "  ${GREEN}Passed: $PASS${NC}    ${RED}Failed: $FAIL${NC}    ${YELLOW}Optional missing: $WARN${NC}"
-echo "──────────────────────────────"
-
-if [ "$FAIL" -gt 0 ]; then
-  echo ""
-  echo "Bootstrap is incomplete. $FAIL required file(s) missing."
+if [[ "$FAIL" -gt 0 ]]; then
+  echo "Agent harness setup is incomplete."
   exit 1
-else
-  echo ""
-  echo "Bootstrap setup is complete."
-  exit 0
 fi
+
+echo "Agent harness setup is complete."
